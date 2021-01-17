@@ -7,11 +7,30 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
         d:DataContext="{d:DesignInstance local:MainWindowViewModel}">
-    <Grid>
-        <TextBlock 
-            Text="{Binding EditorPaneViewModel.Text}" 
-            MouseDown="TextBlock_MouseDown"
-            MouseUp="TextBlock_MouseUp"
-            MouseMove="TextBlock_MouseMove"/>
-    </Grid>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <Canvas
+        MouseDown="TextBlock_MouseDown"
+        MouseUp="TextBlock_MouseUp"
+        MouseMove="TextBlock_MouseMove"
+        Background="Transparent">
+        <TextBlock Text="{Binding EditorPaneViewModel.Text}"/>
+        <Line X1="{Binding EditorPaneViewModel.NewPathStart.X}" 
+            Y1="{Binding EditorPaneViewModel.NewPathStart.Y}" 
+            X2="{Binding EditorPaneViewModel.NewPathEnd.X}" 
+            Y2="{Binding EditorPaneViewModel.NewPathEnd.Y}" 
+            Stroke="Black" StrokeThickness="2"
+            Visibility="{Binding EditorPaneViewModel.IsDrawing, Converter={StaticResource BoolToVis}}"/>
+
+        <Rectangle 
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Canvas.Left="{Binding EditorPaneViewModel.RectStartPoint.X}" 
+            Canvas.Top="{Binding EditorPaneViewModel.RectStartPoint.Y}" 
+            Width="{Binding EditorPaneViewModel.RectEndPoint.X}" 
+            Height="{Binding EditorPaneViewModel.RectEndPoint.Y}" 
+            Stroke="Black" StrokeThickness="2"
+            Visibility="{Binding EditorPaneViewModel.IsSelecting, Converter={StaticResource BoolToVis}}"/>
+    </Canvas>
 </Window>

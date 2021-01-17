@@ -1,29 +1,44 @@
 ﻿namespace FastLayoutFunctional
-open System.Windows.Input
+
+open System
+
+type Point =
+    {
+        X: double;
+        Y: double;
+    }
+
+type trackPlanData = 
+    {
+        currentAction: string;
+        startPos: Point;
+        endPos: Point;
+        rectEndPos: Point; 
+        rectStartPos: Point; 
+    }
 
 type WaitingTrackPlan =
     {
-        temp: string;
+        data: trackPlanData;
     }
 
 type BackgroundActionTrackPlan =
     {
-        temp: string;
+        data: trackPlanData;
     }
-
 type DrawingNewPath =
     {
-        temp: string;
+        data: trackPlanData;
     }
 
 type DraggingMarquee =
     {
-        temp: string;
+        data: trackPlanData;
     }
 
 type DraggingBackground =
     {
-        temp: string;
+        data: trackPlanData;
     }
 
 type TrackPlan=
@@ -56,43 +71,55 @@ type EndBackgroundDrag =
 
 module TrackPlanPanel =
     let create =
-        WaitingState { WaitingTrackPlan.temp = "waiting" }
+        WaitingState { data = {currentAction = "waiting"; startPos = {X =10.0; Y = 10.0}; endPos = {X =100.0; Y = 100.0}; rectStartPos = {X =10.0; Y = 10.0}; rectEndPos = {X =100.0; Y = 100.0}}}
 
-    let getText (trackPlan : TrackPlan) =
-        match trackPlan with
-        | WaitingState state -> state.temp
-        | BackgroundActionState state -> state.temp
-        | DrawingPathState state -> state.temp
-        | MarrqueeState state -> state.temp
-        | DraggingBackground state -> state.temp
+    let getData trackPlan =
+        let data =
+            match trackPlan with
+            | WaitingState state -> state.data
+            | BackgroundActionState state -> state.data
+            | DrawingPathState state -> state.data
+            | MarrqueeState state -> state.data
+            | DraggingBackground state -> state.data
+        let topLeft = {X = Math.Min(data.startPos.X, data.endPos.X); Y = Math.Min(data.startPos.Y, data.endPos.Y)}
+        let bottomRight = {X = Math.Max(data.startPos.X, data.endPos.X); Y = Math.Max(data.startPos.Y, data.endPos.Y)}
+        let endPos = {X = bottomRight.X - topLeft.X; Y = bottomRight.Y - topLeft.Y}
+        {data with rectEndPos = endPos; rectStartPos = topLeft}
 
     let initiateBackgroundAction : InitiateBackgroundAction =
         fun waitingTrackPlan ->
-            {temp = waitingTrackPlan.temp}
+            {data = waitingTrackPlan.data}
 
     let initiatePath : InitiatePathDraw =
-        fun _ ->
-            {temp = "drawing"}
+        fun state ->
+            {data = {state.data with currentAction = "drawing"; }}
 
     let endPath : EndPathDraw =
-        fun _ ->
-            {temp = "waiting"}
+        fun state ->
+            {data = {state.data with currentAction = "waiting"}}
 
     let startSelectionDrag : StartSelectionDrag = 
-        fun _ ->
-            {temp = "dragging selection"}
+        fun state ->
+            {data = {state.data with currentAction = "dragging selection"}}
 
     let endSelectionDrag : EndSelectionDrag =
-        fun _ ->
-            {temp = "waiting"}
+        fun state ->
+            {data = {state.data with currentAction = "waiting"}}
             
     let startBackgroundDrag : StartBackgroundDrag = 
-        fun _ ->
-            {temp = "dragging background"}
+        fun state ->
+            {data = {state.data with currentAction = "dragging background"}}
 
     let endBackgroundDrag : EndBackgroundDrag =
-        fun _ ->
-            {temp = "waiting"}
+        fun state ->
+            {data = {state.data with currentAction = "waiting"}}
+
+    let updateEnd data x y =
+        {data with endPos = {X = x; Y =y}}
+
+    let updateStartAndEnd data x y =
+        let endUpdated = updateEnd data x y
+        {endUpdated with startPos = {X = x; Y = y}}
 
     let mouseDown trackPlan =
         match trackPlan with
@@ -100,19 +127,21 @@ module TrackPlanPanel =
         | DrawingPathState -> trackPlan
         | _ -> failwith "Cannot mouse down in current state"
 
-    let mouseUp trackPlan =
+    let mouseUp trackPlan x y =
         match trackPlan with
-        | BackgroundActionState state -> DrawingPathState(initiatePath state)
+        | BackgroundActionState state -> DrawingPathState(initiatePath {state with data = updateStartAndEnd state.data x y})
         | DrawingPathState state -> WaitingState(endPath state)
         | MarrqueeState state -> WaitingState(endSelectionDrag state)
         | DraggingBackground state -> WaitingState(endBackgroundDrag state)
         | _ -> failwith "Cannot mouse up in current state"
 
-    let mouseMove trackPlan ctrlDown =
+    let mouseMove trackPlan ctrlDown x y =
         match trackPlan with
         | BackgroundActionState state -> 
             if ctrlDown
             then DraggingBackground(startBackgroundDrag state)
-            else MarrqueeState(startSelectionDrag state)
+            else MarrqueeState(startSelectionDrag {state with data = updateStartAndEnd state.data x y})
+        | DrawingPathState state -> DrawingPathState({state with data = updateEnd state.data x y})
+        | MarrqueeState state -> MarrqueeState({state with data = updateEnd state.data x y})
         | _ -> trackPlan
     
